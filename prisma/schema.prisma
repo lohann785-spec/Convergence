@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  name          String?
+  password      String?
+  avatar        String?
+  bio           String?
+  theme         String     @default("dark")
+  accentColor   String     @default("white")
+  fontSize      String     @default("medium")
+  codeFont      String     @default("mono")
+  animatedBg    Boolean    @default(true)
+  language      String     @default("fr")
+  emailNotifications Boolean @default(true)
+  pushNotifications Boolean @default(true)
+  
+  plan          Plan       @default(FREE)
+  creditsTotal  Float      @default(5)
+  creditsUsed   Float      @default(0)
+  creditsPeriod String     @default("week")
+  
+  projects      Project[]
+  chatMessages  ChatMessage[]
+  generatedApps GeneratedApp[]
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+enum Plan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+model Project {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name      String
+  type      String     @default("mobile") // "mobile" or "fullstack"
+  code      String?    @db.Text
+  description String?
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model ChatMessage {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role      String     @default("user") // "user" or "assistant"
+  content   String     @db.Text
+  
+  createdAt DateTime   @default(now())
+}
+
+model GeneratedApp {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name      String
+  code      String     @db.Text
+  type      String     @default("mobile") // "mobile" or "fullstack"
+  description String?
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}

@@ -281,20 +281,6 @@ export function ChatInterface({ onAppGenerated, isGenerating, setIsGenerating, u
               >
                 ✨ Gemini
               </button>
-              <button
-                onClick={() => {
-                  setAiProvider('groq')
-                  setAiModel('mixtral-8x7b-32768')
-                }}
-                className={cn(
-                  "px-4 py-2 rounded-full text-sm border transition-all",
-                  aiProvider === 'groq'
-                    ? "bg-green-500 border-green-500 text-white"
-                    : "bg-white/5 border-white/20 hover:bg-white/10"
-                )}
-              >
-                🚀 Groq (Gratuit)
-              </button>
             </div>
 
             {/* Suggestions */}
@@ -407,10 +393,9 @@ export function ChatInterface({ onAppGenerated, isGenerating, setIsGenerating, u
               </span>
               <span>
                 IA: <span className="text-white/60">
-                  {aiProvider === 'openrouter' && aiModel.includes('openai') ? 'ChatGPT-4' :
-                   aiProvider === 'openrouter' && aiModel.includes('claude') ? 'Claude 3' :
-                   aiProvider === 'openrouter' && aiModel.includes('gemini') ? 'Gemini' :
-                   aiProvider === 'groq' ? 'Groq' : 'Ollama'}
+                  {aiModel.includes('openai') ? 'ChatGPT-4' :
+                   aiModel.includes('claude') ? 'Claude 3' :
+                   aiModel.includes('gemini') ? 'Gemini' : 'IA'}
                 </span>
               </span>
               {creditPreview && (

@@ -40,6 +40,16 @@ export function AppPreview({ app, onClose }: AppPreviewProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const downloadCode = () => {
+    const element = document.createElement('a')
+    const file = new Blob([app.code], { type: 'text/plain' })
+    element.href = URL.createObjectURL(file)
+    element.download = `${app.name.replace(/\.\.\./g, '')}.${app.type === 'mobile' ? 'tsx' : 'ts'}`
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }
+
   const deviceSizes = {
     mobile: "w-[375px] h-[667px]",
     tablet: "w-[768px] h-[1024px] scale-[0.6] origin-top",
@@ -133,19 +143,28 @@ export function AppPreview({ app, onClose }: AppPreviewProps) {
         {/* Actions */}
         <div className="flex items-center gap-1">
           {viewMode === "code" && (
-            <button
-              onClick={copyCode}
-              className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded-lg text-sm transition-colors"
-            >
-              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-              {copied ? "Copié!" : "Copier"}
-            </button>
+            <>
+              <button
+                onClick={copyCode}
+                className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded-lg text-sm transition-colors"
+              >
+                {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                {copied ? "Copié!" : "Copier"}
+              </button>
+              <button
+                onClick={downloadCode}
+                className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded-lg text-sm transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Télécharger
+              </button>
+            </>
           )}
-          <button className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-            <RotateCcw className="w-4 h-4" />
+          <button className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Partager">
+            <Share2 className="w-4 h-4" />
           </button>
-          <button className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-            <ExternalLink className="w-4 h-4" />
+          <button className="p-2 hover:bg-white/10 rounded-lg transition-colors" onClick={onClose} title="Fermer">
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -226,25 +245,75 @@ export function AppPreview({ app, onClose }: AppPreviewProps) {
             </div>
           </div>
         ) : (
-          <div className="h-full overflow-auto">
-            <pre className="p-4 bg-white/5 rounded-xl border border-white/10 text-sm font-mono text-white/80 overflow-x-auto">
-              <code>{app.code}</code>
-            </pre>
+          <div className="h-full overflow-auto flex flex-col">
+            {/* Code Metadata */}
+            <div className="p-4 bg-white/5 border-b border-white/10">
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <span className="text-xs text-white/50 uppercase">Langage</span>
+                  <p className="text-sm font-medium">{app.type === 'mobile' ? 'TSX' : 'TypeScript'}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-white/50 uppercase">Lignes</span>
+                  <p className="text-sm font-medium">{app.code.split('\n').length}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-white/50 uppercase">Caractères</span>
+                  <p className="text-sm font-medium">{app.code.length.toLocaleString()}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-white/50 uppercase">Tokens utilisés</span>
+                  <p className="text-sm font-medium">{app.tokensUsed || '—'}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Code Display */}
+            <div className="flex-1 overflow-auto">
+              <pre className="p-4 bg-white/5 text-sm font-mono text-white/80">
+                <code>{app.code}</code>
+              </pre>
+            </div>
           </div>
         )}
       </div>
 
       {/* Footer Actions */}
       <div className="p-4 border-t border-white/10">
-        <div className="flex items-center gap-3">
-          <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white text-black rounded-xl font-medium hover:bg-white/90 transition-colors">
-            <Download className="w-5 h-5" />
-            Télécharger le projet
-          </button>
-          <button className="flex items-center justify-center gap-2 px-4 py-3 bg-white/10 rounded-xl font-medium hover:bg-white/20 transition-colors">
-            <Share2 className="w-5 h-5" />
-            Partager
-          </button>
+        <div className="space-y-3">
+          {/* Main Actions */}
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={copyCode}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white text-black rounded-xl font-medium hover:bg-white/90 transition-colors"
+              title="Copier le code dans le presse-papiers"
+            >
+              <Copy className="w-5 h-5" />
+              <span>{copied ? 'Copié!' : 'Copier le code'}</span>
+            </button>
+            <button 
+              onClick={downloadCode}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-white/10 rounded-xl font-medium hover:bg-white/20 transition-colors"
+              title="Télécharger le fichier"
+            >
+              <Download className="w-5 h-5" />
+              Télécharger
+            </button>
+          </div>
+          
+          {/* Secondary Actions */}
+          <div className="flex items-center gap-3">
+            <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white/5 rounded-lg font-medium hover:bg-white/10 transition-colors text-sm">
+              <Share2 className="w-4 h-4" />
+              Partager
+            </button>
+            <button 
+              onClick={onClose}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-white/5 rounded-lg font-medium hover:bg-white/10 transition-colors text-sm"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
 import prisma from '@/lib/prisma'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Configuration for Ollama (local LLM - gratuit!)
+const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral'
 
 const systemPrompts = {
   mobile: `You are an expert mobile app developer. Generate React Native code for mobile applications.
@@ -58,29 +57,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Appeler OpenAI
+    // Appeler Ollama (local gratuit)
     const prompt = `${systemPrompts[type as keyof typeof systemPrompts] || systemPrompts.mobile}
 
 User request: "${description}"
 
 Generate a complete, working ${type === 'mobile' ? 'React Native' : 'Next.js'} application.`
 
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4',
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
+    // Appel à Ollama via API REST
+    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        prompt: prompt,
+        stream: false,
+        options: {
+          temperature: 0.7,
+          num_predict: 2000,
         },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
+      }),
     })
 
-    const code = completion.choices[0]?.message?.content || ''
+    if (!response.ok) {
+      throw new Error(`Ollama error: ${response.statusText}. Make sure Ollama is running on ${OLLAMA_URL}`)
+    }
 
-    if (!code) {
-      throw new Error('Pas de réponse de OpenAI')
+    const result = await response.json()
+    const code = result.response || ''
+
+    if (!code || code.trim().length === 0) {
+      throw new Error('Pas de réponse du modèle Ollama')
     }
 
     // Sauvegarder l'app générée
@@ -113,7 +120,7 @@ Generate a complete, working ${type === 'mobile' ? 'React Native' : 'Next.js'} a
           type,
         },
         creditsRemaining: creditsAvailable - creditsNeeded,
-        message: 'Code généré avec succès par OpenAI',
+        message: `Code généré avec succès par ${OLLAMA_MODEL} (Ollama local)`,
       },
       { status: 201 }
     )
@@ -121,9 +128,9 @@ Generate a complete, working ${type === 'mobile' ? 'React Native' : 'Next.js'} a
     console.error('Generate code error:', error)
     
     if (error instanceof Error) {
-      if (error.message.includes('API key')) {
+      if (error.message.includes('Ollama')) {
         return NextResponse.json(
-          { error: 'Erreur: Clé API OpenAI non configurée' },
+          { error: `Erreur Ollama: ${error.message}. Assurez-vous que Ollama est en cours d'exécution sur ${OLLAMA_URL}` },
           { status: 500 }
         )
       }

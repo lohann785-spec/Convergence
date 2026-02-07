@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { getProvider, AVAILABLE_MODELS } from './providers'
-import type { Provider } from './providers'
+
+// Configuration for Ollama (local LLM - gratuit!)
+const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral'
 
 const systemPrompts = {
   mobile: `You are an expert mobile app developer. Generate React Native code for mobile applications.
@@ -23,8 +25,7 @@ Format: Return only the code, no explanations.`,
 
 export async function POST(request: NextRequest) {
   try {
-    const { description, type = 'mobile', userId, provider = 'ollama', model } =
-      await request.json()
+    const { description, type = 'mobile', userId } = await request.json()
 
     if (!description || !userId) {
       return NextResponse.json(
@@ -56,36 +57,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Créer le prompt
+    // Appeler Ollama (local gratuit)
     const prompt = `${systemPrompts[type as keyof typeof systemPrompts] || systemPrompts.mobile}
 
 User request: "${description}"
 
 Generate a complete, working ${type === 'mobile' ? 'React Native' : 'Next.js'} application.`
 
-    // Obtenir le provider
-    const llmProvider = getProvider(provider as Provider, model)
-
-    // Vérifier que le provider est disponible
-    const available = await llmProvider.isAvailable()
-    if (!available) {
-      return NextResponse.json(
-        {
-          error: `Provider ${provider} non disponible. Vérifier la configuration.`,
-          hint: `Pour ${provider}: vérifier les env vars`,
+    // Appel à Ollama via API REST
+    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        prompt: prompt,
+        stream: false,
+        options: {
+          temperature: 0.7,
+          num_predict: 2000,
         },
-        { status: 503 }
-      )
-    }
-
-    // Générer le code
-    const result = await llmProvider.generateCode(prompt, {
-      temperature: 0.7,
-      maxTokens: 2000,
+      }),
     })
 
-    if (!result.code || result.code.trim().length === 0) {
-      throw new Error(`Pas de réponse du modèle ${result.model}`)
+    if (!response.ok) {
+      throw new Error(`Ollama error: ${response.statusText}. Make sure Ollama is running on ${OLLAMA_URL}`)
+    }
+
+    const result = await response.json()
+    const code = result.response || ''
+
+    if (!code || code.trim().length === 0) {
+      throw new Error('Pas de réponse du modèle Ollama')
     }
 
     // Sauvegarder l'app générée
@@ -93,7 +95,7 @@ Generate a complete, working ${type === 'mobile' ? 'React Native' : 'Next.js'} a
       data: {
         userId,
         name: `${description.slice(0, 30)}...`,
-        code: result.code,
+        code,
         type,
         description,
       },
@@ -114,57 +116,29 @@ Generate a complete, working ${type === 'mobile' ? 'React Native' : 'Next.js'} a
         app: {
           id: generatedApp.id,
           name: generatedApp.name,
-          code: result.code,
+          code,
           type,
         },
         creditsRemaining: creditsAvailable - creditsNeeded,
-        message: `Code généré avec succès par ${result.model} via ${result.provider}`,
-        provider: result.provider,
-        model: result.model,
+        message: `Code généré avec succès par ${OLLAMA_MODEL} (Ollama local)`,
       },
       { status: 201 }
     )
   } catch (error) {
     console.error('Generate code error:', error)
-
+    
     if (error instanceof Error) {
-      if (error.message.includes('non disponible')) {
-        return NextResponse.json({ error: error.message }, { status: 503 })
-      }
-      if (error.message.includes('API key')) {
+      if (error.message.includes('Ollama')) {
         return NextResponse.json(
-          { error: `Configuration manquante: ${error.message}` },
+          { error: `Erreur Ollama: ${error.message}. Assurez-vous que Ollama est en cours d'exécution sur ${OLLAMA_URL}` },
           { status: 500 }
         )
       }
     }
-
+    
     return NextResponse.json(
       { error: 'Erreur lors de la génération du code' },
       { status: 500 }
     )
   }
-}
-
-// Route pour lister les providers disponibles
-export async function GET() {
-  return NextResponse.json({
-    providers: {
-      ollama: {
-        name: 'Ollama (Local - GRATUIT)',
-        available: process.env.OLLAMA_URL ? true : false,
-        models: AVAILABLE_MODELS.ollama,
-      },
-      openrouter: {
-        name: 'OpenRouter (ChatGPT, Claude, Gemini...)',
-        available: process.env.OPENROUTER_API_KEY ? true : false,
-        models: AVAILABLE_MODELS.openrouter,
-      },
-      groq: {
-        name: 'Groq (Cloud GRATUIT - Rapide!)',
-        available: process.env.GROQ_API_KEY ? true : false,
-        models: AVAILABLE_MODELS.groq,
-      },
-    },
-  })
 }

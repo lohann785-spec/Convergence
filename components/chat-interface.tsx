@@ -65,6 +65,8 @@ export function ChatInterface({ onAppGenerated, isGenerating, setIsGenerating, u
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [appType, setAppType] = useState<"mobile" | "fullstack">("mobile")
+  const [aiProvider, setAiProvider] = useState<string>("openrouter") // ChatGPT par défaut
+  const [aiModel, setAiModel] = useState<string>("openai/gpt-4-turbo-preview")
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -121,6 +123,8 @@ export function ChatInterface({ onAppGenerated, isGenerating, setIsGenerating, u
           description: userMessage.content,
           type: appType,
           userId: currentUserId,
+          provider: aiProvider,
+          model: aiModel,
         }),
       })
 
@@ -233,6 +237,66 @@ export function ChatInterface({ onAppGenerated, isGenerating, setIsGenerating, u
               </button>
             </div>
 
+            {/* AI Provider Selector */}
+            <div className="flex gap-4 mb-8 flex-wrap justify-center">
+              <button
+                onClick={() => {
+                  setAiProvider('openrouter')
+                  setAiModel('openai/gpt-4-turbo-preview')
+                }}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm border transition-all",
+                  aiProvider === 'openrouter' && aiModel === 'openai/gpt-4-turbo-preview'
+                    ? "bg-blue-500 border-blue-500 text-white"
+                    : "bg-white/5 border-white/20 hover:bg-white/10"
+                )}
+              >
+                🤖 ChatGPT-4
+              </button>
+              <button
+                onClick={() => {
+                  setAiProvider('openrouter')
+                  setAiModel('anthropic/claude-3-opus')
+                }}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm border transition-all",
+                  aiProvider === 'openrouter' && aiModel === 'anthropic/claude-3-opus'
+                    ? "bg-amber-500 border-amber-500 text-white"
+                    : "bg-white/5 border-white/20 hover:bg-white/10"
+                )}
+              >
+                🤕 Claude 3
+              </button>
+              <button
+                onClick={() => {
+                  setAiProvider('openrouter')
+                  setAiModel('google/gemini-pro')
+                }}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm border transition-all",
+                  aiProvider === 'openrouter' && aiModel === 'google/gemini-pro'
+                    ? "bg-purple-500 border-purple-500 text-white"
+                    : "bg-white/5 border-white/20 hover:bg-white/10"
+                )}
+              >
+                ✨ Gemini
+              </button>
+              <button
+                onClick={() => {
+                  setAiProvider('groq')
+                  setAiModel('mixtral-8x7b-32768')
+                }}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm border transition-all",
+                  aiProvider === 'groq'
+                    ? "bg-green-500 border-green-500 text-white"
+                    : "bg-white/5 border-white/20 hover:bg-white/10"
+                )}
+              >
+                🚀 Groq (Gratuit)
+              </button>
+            </div>
+
             {/* Suggestions */}
             <div className="flex flex-wrap gap-2 justify-center max-w-2xl">
               {[
@@ -340,6 +404,14 @@ export function ChatInterface({ onAppGenerated, isGenerating, setIsGenerating, u
             <div className="flex items-center gap-4 text-xs text-white/40">
               <span>
                 Type: <span className="text-white/60">{appType === "mobile" ? "Mobile" : "Full-Stack"}</span>
+              </span>
+              <span>
+                IA: <span className="text-white/60">
+                  {aiProvider === 'openrouter' && aiModel.includes('openai') ? 'ChatGPT-4' :
+                   aiProvider === 'openrouter' && aiModel.includes('claude') ? 'Claude 3' :
+                   aiProvider === 'openrouter' && aiModel.includes('gemini') ? 'Gemini' :
+                   aiProvider === 'groq' ? 'Groq' : 'Ollama'}
+                </span>
               </span>
               {creditPreview && (
                 <span className="flex items-center gap-1">

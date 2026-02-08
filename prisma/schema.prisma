@@ -32,6 +32,11 @@ model User {
   creditsUsed   Float      @default(0)
   creditsPeriod String     @default("week")
   
+  // Stripe
+  stripeId      String?    @unique
+  subscription  Subscription?
+  payments      PaymentHistory[]
+  
   projects      Project[]
   chatMessages  ChatMessage[]
   generatedApps GeneratedApp[]
@@ -84,4 +89,38 @@ model GeneratedApp {
   
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+}
+
+model Subscription {
+  id            String     @id @default(cuid())
+  userId        String     @unique
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  stripeSubscriptionId String? @unique
+  stripeCustomerId String?
+  plan          Plan       @default(FREE)
+  status        String     @default("active") // "active", "cancelled", "past_due"
+  currentPeriodStart DateTime?
+  currentPeriodEnd DateTime?
+  cancelledAt   DateTime?
+  
+  creditsMonthly Float     @default(0)
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model PaymentHistory {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  stripePaymentId String?  @unique
+  amount        Float
+  currency      String     @default("usd")
+  status        String     @default("pending") // "pending", "succeeded", "failed"
+  description   String?
+  planId        String?    // Reference to which plan was purchased
+  
+  createdAt     DateTime   @default(now())
 }
